@@ -135,13 +135,13 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
                       Kích hoạt
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem
+                  {/* <DropdownMenuItem
                     onClick={() => setDeleteId(model.id)}
                     className="gap-2 text-destructive focus:text-destructive text-sm"
                   >
                     <Trash2 className="h-4 w-4" />
                     Xóa
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -167,24 +167,6 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
           </CardContent>
         </Card>
       ))}
-
-      <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogTitle>Delete Model</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete this model? This action cannot be undone.
-          </AlertDialogDescription>
-          <div className="flex gap-3 justify-end">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteId && handleDelete(deleteId)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

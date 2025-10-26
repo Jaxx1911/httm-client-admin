@@ -53,8 +53,37 @@ export function useTrainModel() {
 
       return response.json()
     },
+    onSuccess: () => {},
+  })
+}
+
+// Hook để lưu kết quả training
+export function useSaveTrainResults() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (trainingResults) => {
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_API_URL + '/model/save',
+        {
+          method: "POST",
+          credentials: 'include',
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(trainingResults),
+        }
+      )
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Failed to save training results")
+      }
+
+      return response.json()
+    },
     onSuccess: () => {
-      // Invalidate và refetch danh sách models sau khi train thành công
+      // Invalidate và refetch danh sách models sau khi save thành công
       queryClient.invalidateQueries({ queryKey: ['models'] })
     },
   })
