@@ -99,20 +99,11 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <CardTitle className="text-lg text-foreground truncate">{model.name}</CardTitle>
-                  <Badge
-                    className={
-                      model.status === "completed"
-                        ? "bg-green-100 text-green-700" //xanh
-                        : model.status === "training"
-                        ? "bg-blue-100 text-blue-700" //lam
-                        : model.status === "failed"
-                        ? "bg-red-100 text-red-700" //do
-                        : "bg-gray-100 text-gray-700" + "text-xs"}
-                  >
-                    {model.status.charAt(0).toUpperCase() + model.status.slice(1)}
-                  </Badge>
                 </div>
-                <CardDescription className="text-xs">
+                <CardDescription className="text-sm">
+                  Version : <span className="font-mono text-foreground/60">{model.version}</span>
+                </CardDescription>
+                <CardDescription className="text-sm">
                   Base: <span className="font-mono text-foreground/60">{model.base_model_name}</span>
                 </CardDescription>
               </div>
@@ -151,11 +142,23 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
               </DropdownMenu>
             </div>
 
-            <div className="flex items-center gap-3 text-xs text-muted-foreground pt-2 border-t border-border/50 mt-2">
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground pt-2 border-t border-border/50 mt-2">
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
                 {new Date(model.created_at).toLocaleDateString()}
               </div>
+              <Badge
+                className={
+                  model.status === "completed"
+                  ? "bg-green-100 text-green-700" //xanh
+                  : model.status === "training"
+                  ? "bg-blue-100 text-blue-700" //lam
+                  : model.status === "failed"
+                  ? "bg-red-100 text-red-700" //do
+                  : "bg-gray-100 text-gray-700" + "text-xs"}
+              >
+                {model.status.charAt(0).toUpperCase() + model.status.slice(1)}
+              </Badge>
             </div>
           </CardContent>
         </Card>
