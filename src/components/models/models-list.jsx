@@ -14,41 +14,32 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { MoreVertical, RotateCcw, Trash2, Calendar, Database, Percent, CircleFadingArrowUp } from "lucide-react"
+import { useActivateModel, useModels } from "@/hooks/use-models"
+import { se } from "date-fns/locale"
 
 export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) {
   const [models, setModels] = useState([])
   const [loading, setLoading] = useState(true)
   const [deleteId, setDeleteId] = useState(null)
 
+  const activateModel = useActivateModel()
+  const { data: modelsData } = useModels()
+
   useEffect(() => {
-    fetchModels()
-  }, [])
+    if (modelsData) {
+      setModels(modelsData.models)
+      setLoading(false)
 
-  const fetchModels = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/model`)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      setModels(data.models)
-
-      for (const model of data.models) {
-        if (!baseModels.find((bm) => bm.id === model.id)) {
-          baseModels.push({ id: model.id, label: model.name })
-          setBaseModels([...baseModels])
+      const tmp = baseModels;
+      for (let model of modelsData.models) {
+        if (!tmp.find((bm) => bm.id === model.id)) {
+          tmp.push({ id: model.id, label: model.name });
         }
       }
-    } catch (error) {
-      console.error("Failed to fetch models:", error)
-      setModels([])
-    } finally {
-      setLoading(false)
+
+      setBaseModels(tmp);
     }
-  }
+  }, [modelsData])
 
   const handleDelete = async (modelId) => {
     try {
@@ -60,6 +51,15 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
     }
   }
 
+  const handleActive = async (modelId) => {
+    try {
+      console.log("Activating model:", modelId)
+      await activateModel.mutateAsync(modelId)
+      onRefresh()
+    } catch (error) {
+      console.error("Failed to activate model:", error)
+    }
+  }
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -87,7 +87,7 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
 
   return (
     <div className="space-y-2">
-      {models.map((model) => (
+      {models.sort((a, b) => a.is_active ? -1 : b.is_active ? 1 : 0).map((model) => (
         <Card
           key={model.id}
           className="border-border bg-white overflow-hidden px-2 py-4"
@@ -130,7 +130,7 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
                     Huấn luyện lại
                   </DropdownMenuItem>
                   {!model.is_active && (
-                    <DropdownMenuItem onClick={onRefresh} className="gap-2 text-sm">
+                    <DropdownMenuItem onClick={() => handleActive(model.id)} className="gap-2 text-sm">
                       <CircleFadingArrowUp className="h-4 w-4" />
                       Kích hoạt
                     </DropdownMenuItem>

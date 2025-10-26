@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
-// Hook để fetch danh sách models
 export function useModels(enabled = true) {
   return useQuery({
     queryKey: ['models'],
@@ -28,7 +27,6 @@ export function useModels(enabled = true) {
   })
 }
 
-// Hook để train model mới
 export function useTrainModel() {
   const queryClient = useQueryClient()
 
@@ -97,7 +95,7 @@ export function useRetrainModel() {
   })
 }
 
-// Hook để xóa model
+
 export function useDeleteModel() {
   const queryClient = useQueryClient()
 
@@ -127,30 +125,31 @@ export function useDeleteModel() {
   })
 }
 
-// Hook để get chi tiết 1 model
-export function useModel(modelId, enabled = true) {
-  return useQuery({
-    queryKey: ['models', modelId],
-    queryFn: async () => {
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + `/api/models/${modelId}`,
-        {
-          method: "GET",
-          credentials: 'include',
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      )
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch model details")
-      }
-      
-      return response.json()
-    },
-    enabled: enabled && !!modelId,
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
-  })
+
+export function useActivateModel() {
+  const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (modelId) => {
+            const response = await fetch(
+                process.env.NEXT_PUBLIC_API_URL + `/model/activate/${modelId}`,
+                {
+                    method: "POST",
+                    credentials: 'include',
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            )
+
+            if (!response.ok) {
+                const error = await response.json()
+                throw new Error(error.message || "Failed to activate model")
+            }
+
+            return response.json()
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['models'] })
+        },
+    })
 }
