@@ -90,21 +90,23 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
       {models.map((model) => (
         <Card
           key={model.id}
-          className="border-border bg-white hover:shadow-md transition-shadow duration-200 overflow-hidden px-2 py-4"
+          className="border-border bg-white overflow-hidden px-2 py-4"
           //style={{padding: 16}}
         >
           <CardContent className="p-3">
             <div className="flex items-center justify-between gap-3">
-              {/* Left: Model Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <CardTitle className="text-lg text-foreground truncate">{model.name}</CardTitle>
+                  <CardTitle className="text-lg text-foreground">{model.name}</CardTitle>
+                  {model.is_active && (
+                    <Badge className="bg-green-100 text-green-700 text-sm">Active</Badge>
+                  )}
                 </div>
                 <CardDescription className="text-sm">
-                  Version : <span className="font-mono text-foreground/60">{model.version}</span>
+                  Version : <span className="font-mono">{model.version}</span>
                 </CardDescription>
                 <CardDescription className="text-sm">
-                  Base: <span className="font-mono text-foreground/60">{model.base_model_name}</span>
+                  Base: <span className="font-mono">{model.base_model_name}</span>
                 </CardDescription>
               </div>
 
@@ -127,10 +129,12 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
                     <RotateCcw className="h-4 w-4" />
                     Huấn luyện lại
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onRefresh} className="gap-2 text-sm">
-                    <CircleFadingArrowUp className="h-4 w-4" />
-                    Kích hoạt
-                  </DropdownMenuItem>
+                  {!model.is_active && (
+                    <DropdownMenuItem onClick={onRefresh} className="gap-2 text-sm">
+                      <CircleFadingArrowUp className="h-4 w-4" />
+                      Kích hoạt
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={() => setDeleteId(model.id)}
                     className="gap-2 text-destructive focus:text-destructive text-sm"

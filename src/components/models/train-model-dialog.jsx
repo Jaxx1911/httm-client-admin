@@ -32,7 +32,7 @@ export function TrainModelDialog({ open, onOpenChange, onSuccess, baseModels }) 
     try {
       await trainModelMutation.mutateAsync({
         model_name: modelName,
-        base_model_id: baseModels.find((bm) => bm.name === baseModel)?.id,
+        base_model_id: baseModels.find((bm) => bm.id === baseModel)?.id,
         is_select_all: selectionData.isSelectAll,
         sample_ids: selectionData.samples,
       })
