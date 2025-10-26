@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRetrainModel } from "@/hooks/use-models"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -18,55 +19,35 @@ const BASE_MODELS = [
 export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
   const [baseModel, setBaseModel] = useState("vit5-base")
   const [trainingData, setTrainingData] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
   const [results, setResults] = useState(null)
+
+  const retrainModelMutation = useRetrainModel()
 
   useEffect(() => {
     if (!open) {
       setBaseModel("vit5-base")
       setTrainingData("")
-      setError("")
       setResults(null)
     }
   }, [open])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError("")
 
-    if (!trainingData.trim()) {
-      setError("Training data is required")
-      return
-    }
-
-    if (!modelId) {
-      setError("Model ID is missing")
+    if (!trainingData.trim() || !modelId) {
       return
     }
 
     try {
-      setLoading(true)
-      const response = await fetch(`/api/models/${modelId}/retrain`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          baseModel,
-          trainingData: trainingData.split("\n").filter((line) => line.trim()),
-        }),
+      const data = await retrainModelMutation.mutateAsync({
+        modelId,
+        baseModel,
+        trainingData: trainingData.split("\n").filter((line) => line.trim()),
       })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(errorText || "Failed to retrain model")
-      }
-
-      const data = await response.json()
       setResults(data.results)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setLoading(false)
+      console.error("Retrain model error:", err)
     }
   }
 
@@ -74,24 +55,24 @@ export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
     if (!modelId || !results) return
 
     try {
-      setLoading(true)
-      const response = await fetch(`/api/models/${modelId}/save-results`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(results),
-      })
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_API_URL + `/api/models/${modelId}/save-results`,
+        {
+          method: "POST",
+          credentials: 'include',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(results),
+        }
+      )
 
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(errorText || "Failed to save results")
+        throw new Error("Failed to save results")
       }
 
       onOpenChange(false)
-      onSuccess()
+      onSuccess?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setLoading(false)
+      console.error("Save results error:", err)
     }
   }
 
@@ -99,7 +80,6 @@ export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
     setResults(null)
     setTrainingData("")
     setBaseModel("vit5-base")
-    setError("")
   }
 
   return (
@@ -117,7 +97,7 @@ export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
                 <Label htmlFor="base-model" className="text-foreground font-medium">
                   Base Model
                 </Label>
-                <Select value={baseModel} onValueChange={setBaseModel} disabled={loading}>
+                <Select value={baseModel} onValueChange={setBaseModel}>
                   <SelectTrigger className="border-border bg-input text-foreground">
                     <SelectValue />
                   </SelectTrigger>
@@ -142,16 +122,16 @@ export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
                 value={trainingData}
                 onChange={(e) => setTrainingData(e.target.value)}
                 rows={6}
-                disabled={loading}
+                //disabled={loading}
                 className="border-border bg-input text-foreground placeholder:text-muted-foreground resize-none"
               />
               <p className="text-xs text-muted-foreground">Enter one training sample per line</p>
             </div>
 
-            {error && (
+            {retrainModelMutation.error && (
               <div className="flex gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
                 <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
+                <span>{retrainModelMutation.error.message || "Failed to retrain model"}</span>
               </div>
             )}
 
@@ -160,18 +140,18 @@ export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={loading}
+                disabled={retrainModelMutation.isPending}
                 className="border-border text-foreground hover:bg-muted"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={retrainModelMutation.isPending || !trainingData.trim()}
                 className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
               >
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? "Training..." : "Start Retraining"}
+                {retrainModelMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {retrainModelMutation.isPending ? "Training..." : "Start Retraining"}
               </Button>
             </div>
           </form>
@@ -197,18 +177,15 @@ export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
-                disabled={loading}
                 className="border-border text-foreground hover:bg-muted bg-transparent"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={loading}
                 className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
               >
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? "Saving..." : "Save Results"}
+                Save Results
               </Button>
             </div>
           </div>

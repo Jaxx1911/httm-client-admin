@@ -37,8 +37,8 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
-        <NavItem icon={Settings} label="Settings" />
-        <NavItem icon={LogOut} label="Logout" />
+        <NavItem icon={Settings} label="Cài đặt" />
+        <NavItem icon={LogOut} label="Đăng xuất" />
       </div>
     </aside>
   )

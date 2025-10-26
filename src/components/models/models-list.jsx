@@ -13,9 +13,9 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreVertical, RotateCcw, Trash2, Calendar, Database } from "lucide-react"
+import { MoreVertical, RotateCcw, Trash2, Calendar, Database, Percent, CircleFadingArrowUp } from "lucide-react"
 
-export function ModelsList({ onRetrain, onRefresh }) {
+export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) {
   const [models, setModels] = useState([])
   const [loading, setLoading] = useState(true)
   const [deleteId, setDeleteId] = useState(null)
@@ -27,14 +27,21 @@ export function ModelsList({ onRetrain, onRefresh }) {
   const fetchModels = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/models")
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/model`)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       
       const data = await response.json()
-      setModels(data)
+      setModels(data.models)
+
+      for (const model of data.models) {
+        if (!baseModels.find((bm) => bm.id === model.id)) {
+          baseModels.push({ id: model.id, label: model.name })
+          setBaseModels([...baseModels])
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch models:", error)
       setModels([])
@@ -83,35 +90,41 @@ export function ModelsList({ onRetrain, onRefresh }) {
       {models.map((model) => (
         <Card
           key={model.id}
-          className="border-border bg-white hover:shadow-md transition-shadow duration-200 overflow-hidden"
+          className="border-border bg-white hover:shadow-md transition-shadow duration-200 overflow-hidden px-2 py-4"
+          //style={{padding: 16}}
         >
           <CardContent className="p-3">
             <div className="flex items-center justify-between gap-3">
               {/* Left: Model Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <CardTitle className="text-sm text-foreground truncate">{model.name}</CardTitle>
+                  <CardTitle className="text-lg text-foreground truncate">{model.name}</CardTitle>
                   <Badge
-                    variant={
-                      model.status === "ready" ? "default" : model.status === "training" ? "secondary" : "destructive"
-                    }
-                    className="shrink-0 text-xs"
+                    className={
+                      model.status === "completed"
+                        ? "bg-green-100 text-green-700" //xanh
+                        : model.status === "training"
+                        ? "bg-blue-100 text-blue-700" //lam
+                        : model.status === "failed"
+                        ? "bg-red-100 text-red-700" //do
+                        : "bg-gray-100 text-gray-700" + "text-xs"}
                   >
                     {model.status.charAt(0).toUpperCase() + model.status.slice(1)}
                   </Badge>
                 </div>
                 <CardDescription className="text-xs">
-                  Base: <span className="font-mono text-foreground/60">{model.baseModel}</span>
+                  Base: <span className="font-mono text-foreground/60">{model.base_model_name}</span>
                 </CardDescription>
               </div>
 
-              {/* Center: Accuracy */}
-              <div className="flex flex-col items-center gap-0.5 px-3 py-1 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs font-medium text-blue-600 uppercase">Accuracy</p>
-                <p className="text-base font-bold text-blue-700">{(model.accuracy * 100).toFixed(1)}%</p>
+              <div className="flex items-center gap-1 ml-auto text-muted-foreground text-sm gap-4">
+                <div className="flex items-center">Accuracy: {(model.accuracy * 100).toFixed(1)} <Percent className="h-3 w-3" /></div>
+                <div className="flex items-center">Precision: {(model.precision * 100).toFixed(1)} <Percent className="h-3 w-3" /></div>
+                <div className="flex items-center">Recall: {(model.recall * 100).toFixed(1)} <Percent className="h-3 w-3" /></div>
+                <div className="flex items-center">F1 Score: {(model.f1_score * 100).toFixed(1)} <Percent className="h-3 w-3" /></div>
               </div>
 
-              {/* Right: Actions Menu */}
+              {/* Actions Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -121,14 +134,18 @@ export function ModelsList({ onRetrain, onRefresh }) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onRetrain(model.id)} className="gap-2 text-sm">
                     <RotateCcw className="h-4 w-4" />
-                    Retrain
+                    Huấn luyện lại
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onRefresh} className="gap-2 text-sm">
+                    <CircleFadingArrowUp className="h-4 w-4" />
+                    Kích hoạt
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setDeleteId(model.id)}
                     className="gap-2 text-destructive focus:text-destructive text-sm"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Delete
+                    Xóa
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -137,7 +154,7 @@ export function ModelsList({ onRetrain, onRefresh }) {
             <div className="flex items-center gap-3 text-xs text-muted-foreground pt-2 border-t border-border/50 mt-2">
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {new Date(model.trainedAt).toLocaleDateString()}
+                {new Date(model.created_at).toLocaleDateString()}
               </div>
             </div>
           </CardContent>

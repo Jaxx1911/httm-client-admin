@@ -1,128 +1,106 @@
 "use client"
 
 import { useState } from "react"
+import { SamplesList } from "./samples-list"
+import { useTrainModel } from "@/hooks/use-models"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { AlertCircle, Loader2 } from "lucide-react"
 
-const BASE_MODELS = [
-  { id: "vit5-base", label: "viT5 Base (Default)" },
-  { id: "vit5-large", label: "viT5 Large" },
-  { id: "vit5-small", label: "viT5 Small" },
-]
-
-export function TrainModelDialog({ open, onOpenChange, onSuccess }) {
+export function TrainModelDialog({ open, onOpenChange, onSuccess, baseModels }) {
   const [modelName, setModelName] = useState("")
-  const [baseModel, setBaseModel] = useState("vit5-base")
-  const [trainingData, setTrainingData] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [baseModel, setBaseModel] = useState("default")
+  const [selectionData, setSelectionData] = useState({ isSelectAll: false, samples: [] })
+  
+  const trainModelMutation = useTrainModel()
 
   const handleSubmit = async (e) => {
+    console.log("Submitting with data:", { modelName, baseModel, selectionData })
     e.preventDefault()
-    setError("")
 
     if (!modelName.trim()) {
-      setError("Model name is required")
       return
     }
 
-    if (!trainingData.trim()) {
-      setError("Training data is required")
+    if (!selectionData.isSelectAll && selectionData.samples.length === 0) {
       return
     }
 
     try {
-      setLoading(true)
-      const response = await fetch("/api/models/train", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: modelName,
-          baseModel,
-          trainingData: trainingData.split("\n").filter((line) => line.trim()),
-        }),
+      await trainModelMutation.mutateAsync({
+        model_name: modelName,
+        base_model_id: baseModels.find((bm) => bm.name === baseModel)?.id,
+        is_select_all: selectionData.isSelectAll,
+        sample_ids: selectionData.samples,
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to train model")
-      }
-
+      // Reset form
       setModelName("")
-      setBaseModel("vit5-base")
-      setTrainingData("")
+      setBaseModel("default")
+      setSelectionData({ isSelectAll: false, samples: [] })
       onOpenChange(false)
-      onSuccess()
+      onSuccess?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setLoading(false)
+      console.error("Train model error:", err)
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-border bg-card">
+      <DialogContent className="!max-w-6xl w-full border-border bg-card">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Train New Model</DialogTitle>
-          <DialogDescription>Create a new viT5 model with your training data</DialogDescription>
+          <DialogTitle className="text-foreground">Huấn luyện mô hình mới</DialogTitle>
+          <DialogDescription>Tạo mô hình viT5 mới với dữ liệu huấn luyện</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="model-name" className="text-foreground font-medium">
-              Model Name
-            </Label>
-            <Input
-              id="model-name"
-              placeholder="e.g., My Custom Model"
-              value={modelName}
-              onChange={(e) => setModelName(e.target.value)}
-              className="border-border bg-input text-foreground placeholder:text-muted-foreground"
+          <div className="grid grid-cols-[2fr_8fr] gap-6">
+            {/* Left Side - Model Configuration */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="model-name" className="text-foreground font-medium">
+                  Model Name
+                </Label>
+                <Input
+                  id="model-name"
+                  placeholder="e.g., My Custom Model"
+                  value={modelName}
+                  onChange={(e) => setModelName(e.target.value)}
+                  className="border-border bg-input text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="base-model" className="text-foreground font-medium">
+                  Base Model
+                </Label>
+                <Select value={baseModel} onValueChange={setBaseModel}>
+                  <SelectTrigger className="border-border bg-input text-foreground">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-border" align="start">
+                    {baseModels?.map((model) => (
+                      <SelectItem key={model.id} value={model.id} className="text-foreground">
+                        {model.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Right Side - Training Data */}
+            <SamplesList 
+              onSelectionChange={setSelectionData}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="base-model" className="text-foreground font-medium">
-              Base Model
-            </Label>
-            <Select value={baseModel} onValueChange={setBaseModel}>
-              <SelectTrigger className="border-border bg-input text-foreground">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-border bg-card">
-                {BASE_MODELS.map((model) => (
-                  <SelectItem key={model.id} value={model.id} className="text-foreground">
-                    {model.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="training-data" className="text-foreground font-medium">
-              Training Data
-            </Label>
-            <Textarea
-              id="training-data"
-              placeholder="Enter training samples (one per line)"
-              value={trainingData}
-              onChange={(e) => setTrainingData(e.target.value)}
-              rows={5}
-              className="border-border bg-input text-foreground placeholder:text-muted-foreground resize-none"
-            />
-            <p className="text-xs text-muted-foreground">Enter one training sample per line</p>
-          </div>
-
-          {error && (
+          </div>          
+          {trainModelMutation.error && (
             <div className="flex gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-              <span>{error}</span>
+              <span>{trainModelMutation.error.message || "Failed to train model"}</span>
             </div>
           )}
 
@@ -131,18 +109,18 @@ export function TrainModelDialog({ open, onOpenChange, onSuccess }) {
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={loading}
+              disabled={trainModelMutation.isPending}
               className="border-border text-foreground hover:bg-muted"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              disabled={trainModelMutation.isPending || (!selectionData.isSelectAll && selectionData.samples.length === 0)}
               className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {loading ? "Training..." : "Train Model"}
+              {trainModelMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {trainModelMutation.isPending ? "Training..." : "Train Model"}
             </Button>
           </div>
         </form>

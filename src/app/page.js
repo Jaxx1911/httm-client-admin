@@ -30,7 +30,7 @@ export default function Dashboard() {
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto flex items-center justify-center">
-          <Home className="h-24 w-24 text-primary/30" />
+          <Home className="h-24 w-24" />
         </main>
       </div>
     </div>
