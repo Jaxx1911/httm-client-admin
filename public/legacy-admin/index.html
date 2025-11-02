@@ -114,8 +114,6 @@
                     </div>
                     <div style={{ textAlign: 'center', marginTop: '50px' }}>
                         <div className="form-container" style={{ maxWidth: '600px', margin: 'auto', padding: '40px' }}>
-                            <h2></h2>
-                            <p></p>
                             <button 
                                 onClick={() => onNavigate('datasets')} 
                                 className="btn-primary" 
@@ -279,13 +277,24 @@
             const itemsPerPage = 20;
             
             const fetchData = useCallback(async () => {
-                if (!dataset || !dataset.dataset_ID) return;
+                const datasetId = dataset?.dataset_ID || dataset?.id;
+                if (!dataset || !datasetId) {
+                    return;
+                }
                 try {
-                    const res = await api.getSamples(dataset.dataset_ID);
+                    const res = await api.getSamples(datasetId);
+                    if (!res.ok) {
+                        return;
+                    }
                     const data = await res.json();
                     setTotalSamples(data.length);
-                    // Sort samples by created_at date, newest first
-                    data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    if (Array.isArray(data)) {
+                        data.sort((a, b) => {
+                            const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
+                            const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+                            return dateB - dateA;
+                        });
+                    }
                     setSamples(data);
                 } catch (error) {
                     console.error("Lỗi tải samples:", error);
@@ -298,20 +307,19 @@
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
             
-            // Combine crawled sample with existing samples for display
             const displayedSamples = crawledSample ? [crawledSample, ...samples] : samples;
             const currentSamples = displayedSamples.slice(startIndex, endIndex);
 
             const handleSelectAll = (e) => {
                 if (e.target.checked) {
-                    setSelected(new Set(currentSamples.map(s => s.sample_id).filter(id => id))); // Filter out crawled sample without id
+                    setSelected(new Set(currentSamples.map(s => s.id).filter(id => id)));
                 } else {
                     setSelected(new Set());
                 }
             };
 
             const handleSelect = (id) => {
-                if (!id) return; // Don't select the crawled sample preview
+                if (!id) return;
                 setSelected(prev => {
                     const next = new Set(prev);
                     if (next.has(id)) next.delete(id);
@@ -335,6 +343,7 @@
             };
 
             const handleEditCell = (sampleId, field, currentValue) => {
+                if (!sampleId) return;
                 setEditingId(sampleId);
                 setEditingField(field);
                 setEditingValue(currentValue || '');
@@ -363,7 +372,7 @@
                 try {
                     await api.createSample({ ...data, Datasetdataset_ID: dataset.dataset_ID });
                     setIsCreating(false);
-                    setCrawledSample(null); // Clear crawled sample after saving
+                    setCrawledSample(null);
                     fetchData();
                 } catch (error) {
                     alert('Lỗi khi tạo sample: ' + error.message);
@@ -383,7 +392,6 @@
                         throw new Error(err.detail || 'Lỗi không xác định');
                     }
                     const data = await res.json();
-                    // Add a temporary ID for display purposes
                     setCrawledSample({ ...data, sample_id: `crawled-${Date.now()}`, isCrawled: true });
                 } catch (error) {
                     alert('Lỗi khi crawl: ' + error.message);
@@ -391,7 +399,8 @@
             };
 
             const renderCell = (sample, field) => {
-                const isEditing = editingId === sample.sample_id && editingField === field;
+                const sampleId = sample.sample_id || sample.id;
+                const isEditing = editingId === sampleId && editingField === field;
                 const value = sample[field];
 
                 if (isEditing) {
@@ -414,7 +423,7 @@
                     <td>
                         <div
                             className="text-preview"
-                            onClick={() => handleEditCell(sample.sample_id, field, value)}
+                            onClick={() => handleEditCell(sampleId, field, value)}
                             title="Click để chỉnh sửa"
                         >
                             {value || '(trống)'}
@@ -462,7 +471,7 @@
                                     <input
                                         type="checkbox"
                                         onChange={handleSelectAll}
-                                        checked={selected.size === currentSamples.filter(s => s.sample_id && !s.isCrawled).length && currentSamples.length > 0}
+                                        checked={selected.size === currentSamples.filter(s => (s.id || s.sample_id) && !s.isCrawled).length && currentSamples.length > 0}
                                     />
                                 </th>
                                 <th style={{width: '120px'}}>ID / Hành động</th>
@@ -472,28 +481,31 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {currentSamples.map(s => (
-                                <tr key={s.sample_id} style={{fontWeight: s.isCrawled ? 'bold' : 'normal', background: s.isCrawled ? '#fffbe6' : ''}}>
-                                    <td>
-                                        <input
-                                            type="checkbox"
-                                            checked={selected.has(s.sample_id)}
-                                            onChange={() => handleSelect(s.sample_id)}
-                                            disabled={s.isCrawled}
-                                        />
-                                    </td>
-                                    <td>
-                                        {s.isCrawled ? (
-                                            <button onClick={() => handleCreateSample(s)} className="btn-primary">Lưu</button>
-                                        ) : (
-                                            s.sample_id.substring(0, 8) + '...'
-                                        )}
-                                    </td>
-                                    {renderCell(s, 'title')}
-                                    {renderCell(s, 'input_text')}
-                                    {renderCell(s, 'target_summary')}
-                                </tr>
-                            ))}
+                            {currentSamples.map(s => {
+                                const sampleId = s.id || s.sample_id;
+                                return (
+                                    <tr key={sampleId} style={{fontWeight: s.isCrawled ? 'bold' : 'normal', background: s.isCrawled ? '#fffbe6' : ''}}>
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                checked={selected.has(sampleId)}
+                                                onChange={() => handleSelect(sampleId)}
+                                                disabled={s.isCrawled}
+                                            />
+                                        </td>
+                                        <td>
+                                            {s.isCrawled ? (
+                                                <button onClick={() => handleCreateSample(s)} className="btn-primary">Lưu</button>
+                                            ) : sampleId ? (
+                                                sampleId.substring(0, 8) + '...'
+                                            ) : 'N/A'}
+                                        </td>
+                                        {renderCell(s, 'title')}
+                                        {renderCell(s, 'input_text')}
+                                        {renderCell(s, 'target_summary')}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
 
@@ -588,7 +600,7 @@
         }
 
         function MainPage({ user, onLogout }) {
-            const [currentView, setCurrentView] = useState('home'); // 'home', 'datasets', 'samples'
+            const [currentView, setCurrentView] = useState('home');
             const [selectedDataset, setSelectedDataset] = useState(null);
 
             const handleNavigate = (view) => {
@@ -622,7 +634,7 @@
                     const res = await api.me();
                     if (res.ok) setUser(await res.json());
                 } catch (e) {
-                    console.error("Session check failed", e);
+                    console.error('Session check failed', e);
                 } finally {
                     setLoading(false);
                 }
