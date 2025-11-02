@@ -1,11 +1,18 @@
 import { useQuery } from "@tanstack/react-query"
 
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "")
+
+const withBase = (path) => {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`
+  return `${API_BASE_URL}${normalizedPath}`
+}
+
 export function useSamples(currentPage, itemsPerPage = 10, enabled = true) {
   return useQuery({
     queryKey: ['samples', currentPage, itemsPerPage],
     queryFn: async () => {
       const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + `/api/samples?page=${currentPage}&limit=${itemsPerPage}`,
+        withBase(`/api/samples?page=${currentPage}&limit=${itemsPerPage}`),
         {
           method: "GET",
           credentials: 'include',
