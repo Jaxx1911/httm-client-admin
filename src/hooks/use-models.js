@@ -1,11 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "")
+
+const withBase = (path) => {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`
+  return `${API_BASE_URL}${normalizedPath}`
+}
+
 export function useModels(enabled = true) {
   return useQuery({
     queryKey: ['models'],
     queryFn: async () => {
       const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + '/model',
+        withBase('/model'),
         {
           method: "GET",
           credentials: 'include',
@@ -35,7 +42,7 @@ export function useTrainModel() {
       console.log("payload", payload)
       
       const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + '/model/train',
+        withBase('/model/train'),
         {
           method: "POST",
           credentials: 'include',
@@ -64,7 +71,7 @@ export function useSaveTrainResults() {
   return useMutation({
     mutationFn: async (trainingResults) => {
       const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + '/model/save',
+        withBase('/model/save'),
         {
           method: "POST",
           credentials: 'include',
@@ -96,7 +103,7 @@ export function useRetrainModel() {
   return useMutation({
     mutationFn: async ({ modelId, baseModel, trainingData }) => {
       const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + `/models/${modelId}/retrain`,
+        withBase(`/models/${modelId}/retrain`),
         {
           method: "POST",
           credentials: 'include',
@@ -131,7 +138,7 @@ export function useDeleteModel() {
   return useMutation({
     mutationFn: async (modelId) => {
       const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + `/api/models/${modelId}`,
+        withBase(`/api/models/${modelId}`),
         {
           method: "DELETE",
           credentials: 'include',
@@ -159,8 +166,8 @@ export function useActivateModel() {
   const queryClient = useQueryClient()
     return useMutation({
         mutationFn: async (modelId) => {
-            const response = await fetch(
-                process.env.NEXT_PUBLIC_API_URL + `/model/activate/${modelId}`,
+      const response = await fetch(
+        withBase(`/model/activate/${modelId}`),
                 {
                     method: "POST",
                     credentials: 'include',

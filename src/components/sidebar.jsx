@@ -1,6 +1,6 @@
 "use client"
 
-import { Brain, BarChart3, Settings, LogOut, Home } from "lucide-react"
+import { Brain, BarChart3, Settings, LogOut, Home, Database } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -33,6 +33,9 @@ export function Sidebar() {
         <Link href="/models">
           <NavItem icon={BarChart3} label="Models" active={isActive("/models")} />
         </Link>
+        <a href="/legacy-admin/index.html" target="_blank" rel="noopener noreferrer">
+          <NavItem icon={Database} label="Sample Manager" />
+        </a>
       </nav>
 
       {/* Footer */}

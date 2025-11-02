@@ -10,6 +10,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { AlertCircle, Loader2, CheckCircle2 } from "lucide-react"
 
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "")
+
+const withBase = (path) => {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`
+  return `${API_BASE_URL}${normalizedPath}`
+}
+
 const BASE_MODELS = [
   { id: "vit5-base", label: "viT5 Base (Default)" },
   { id: "vit5-large", label: "viT5 Large" },
@@ -56,7 +63,7 @@ export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
 
     try {
       const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + `/api/models/${modelId}/save-results`,
+        withBase(`/api/models/${modelId}/save-results`),
         {
           method: "POST",
           credentials: 'include',
