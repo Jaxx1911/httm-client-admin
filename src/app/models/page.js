@@ -17,8 +17,8 @@ export default function ModelsPage() {
     { id: "default", label: "viT5 Default" },
   ])
 
-  const handleRetrain = (modelId) => {
-    setSelectedModel(modelId)
+  const handleRetrain = (model) => {
+    setSelectedModel(model)
     setShowRetrainDialog(true)
   }
 
@@ -62,7 +62,7 @@ export default function ModelsPage() {
       <RetrainModelDialog
         open={showRetrainDialog}
         onOpenChange={setShowRetrainDialog}
-        modelId={selectedModel}
+        model={selectedModel}
         onSuccess={handleRefresh}
         baseModels={baseModels}
       />

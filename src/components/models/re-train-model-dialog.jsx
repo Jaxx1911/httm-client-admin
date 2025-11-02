@@ -1,74 +1,64 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRetrainModel } from "@/hooks/use-models"
+import { SamplesList } from "./samples-list"
+import { useRetrainModel, useSaveTrainResults } from "@/hooks/use-models"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { AlertCircle, Loader2, CheckCircle2 } from "lucide-react"
 
-const BASE_MODELS = [
-  { id: "vit5-base", label: "viT5 Base (Default)" },
-  { id: "vit5-large", label: "viT5 Large" },
-  { id: "vit5-small", label: "viT5 Small" },
-]
-
-export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
-  const [baseModel, setBaseModel] = useState("vit5-base")
-  const [trainingData, setTrainingData] = useState("")
-  const [results, setResults] = useState(null)
+export function RetrainModelDialog({ open, onOpenChange, model, onSuccess }) {
+  const [selectionData, setSelectionData] = useState({ isSelectAll: false, samples: [] })
+  const [trainingResults, setTrainingResults] = useState(null)
 
   const retrainModelMutation = useRetrainModel()
+  const saveResultsMutation = useSaveTrainResults()
 
   useEffect(() => {
     if (!open) {
-      setBaseModel("vit5-base")
-      setTrainingData("")
-      setResults(null)
+      setSelectionData({ isSelectAll: false, samples: [] })
+      setTrainingResults(null)
     }
   }, [open])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!trainingData.trim() || !modelId) {
+    if (!model) {
+      return
+    }
+
+    if (!selectionData.isSelectAll && selectionData.samples.length === 0) {
       return
     }
 
     try {
-      const data = await retrainModelMutation.mutateAsync({
-        modelId,
-        baseModel,
-        trainingData: trainingData.split("\n").filter((line) => line.trim()),
+      const result = await retrainModelMutation.mutateAsync({
+        id: model.id,
+        is_select_all: selectionData.isSelectAll,
+        sample_ids: selectionData.samples,
+        base_model_id: null,
+        model_name: model.name,
+        is_retrain: true,
       })
 
-      setResults(data.results)
+      // Lưu kết quả để hiển thị
+      setTrainingResults(result.data)
     } catch (err) {
       console.error("Retrain model error:", err)
     }
   }
 
   const handleSave = async () => {
-    if (!modelId || !results) return
+    if (!trainingResults) return
 
     try {
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + `/api/models/${modelId}/save-results`,
-        {
-          method: "POST",
-          credentials: 'include',
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(results),
-        }
-      )
+      await saveResultsMutation.mutateAsync(trainingResults)
 
-      if (!response.ok) {
-        throw new Error("Failed to save results")
-      }
-
+      // Reset form và đóng dialog
+      setSelectionData({ isSelectAll: false, samples: [] })
+      setTrainingResults(null)
       onOpenChange(false)
       onSuccess?.()
     } catch (err) {
@@ -77,57 +67,27 @@ export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
   }
 
   const handleCancel = () => {
-    setResults(null)
-    setTrainingData("")
-    setBaseModel("vit5-base")
+    setTrainingResults(null)
+    setSelectionData({ isSelectAll: false, samples: [] })
+    onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl border-border bg-card">
+      <DialogContent className="!max-w-6xl w-full border-border bg-card">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Retrain Model</DialogTitle>
-          <DialogDescription>Retrain your model with new training data</DialogDescription>
+          <DialogTitle className="text-foreground">Huấn luyện lại mô hình</DialogTitle>
+          <DialogDescription>Huấn luyện lại mô hình với dữ liệu mới</DialogDescription>
         </DialogHeader>
 
-        {!results ? (
+        {!trainingResults ? (
+          // Form retrain
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="base-model" className="text-foreground font-medium">
-                  Base Model
-                </Label>
-                <Select value={baseModel} onValueChange={setBaseModel}>
-                  <SelectTrigger className="border-border bg-input text-foreground">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="border-border bg-card">
-                    {BASE_MODELS.map((model) => (
-                      <SelectItem key={model.id} value={model.id} className="text-foreground">
-                        {model.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="training-data" className="text-foreground font-medium">
-                Training Data
-              </Label>
-              <Textarea
-                id="training-data"
-                placeholder="Enter training samples (one per line)"
-                value={trainingData}
-                onChange={(e) => setTrainingData(e.target.value)}
-                rows={6}
-                //disabled={loading}
-                className="border-border bg-input text-foreground placeholder:text-muted-foreground resize-none"
-              />
-              <p className="text-xs text-muted-foreground">Enter one training sample per line</p>
-            </div>
-
+            {/* Samples List */}
+            <SamplesList 
+              onSelectionChange={setSelectionData}
+            />
+          
             {retrainModelMutation.error && (
               <div className="flex gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
                 <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
@@ -143,49 +103,72 @@ export function RetrainModelDialog({ open, onOpenChange, modelId, onSuccess }) {
                 disabled={retrainModelMutation.isPending}
                 className="border-border text-foreground hover:bg-muted"
               >
-                Cancel
+                Hủy
               </Button>
               <Button
                 type="submit"
-                disabled={retrainModelMutation.isPending || !trainingData.trim()}
+                disabled={retrainModelMutation.isPending || (!selectionData.isSelectAll && selectionData.samples.length === 0)}
                 className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {retrainModelMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                {retrainModelMutation.isPending ? "Training..." : "Start Retraining"}
+                {retrainModelMutation.isPending ? "Đang huấn luyện..." : "Bắt đầu huấn luyện"}
               </Button>
             </div>
           </form>
         ) : (
+          // Kết quả retrain
           <div className="space-y-4">
-            <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3 text-primary border border-primary/20">
+            <div className="flex items-center gap-2 py-2 text-primary">
               <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-              <span className="font-medium">Training completed successfully!</span>
+              <span className="font-medium">Huấn luyện hoàn tất!</span>
             </div>
 
             <div className="space-y-3">
-              <h3 className="font-semibold text-foreground">Training Results</h3>
+              <h3 className="font-semibold text-foreground">Kết quả huấn luyện</h3>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <ResultCard label="Accuracy" value={(results.accuracy * 100).toFixed(2)} />
-                <ResultCard label="Precision" value={(results.precision * 100).toFixed(2)} />
-                <ResultCard label="Recall" value={(results.recall * 100).toFixed(2)} />
-                <ResultCard label="F1 Score" value={(results.f1 * 100).toFixed(2)} />
+                <ResultCard 
+                  label="Accuracy" 
+                  value={((trainingResults.accuracy || 0) * 100).toFixed(2)} 
+                />
+                <ResultCard 
+                  label="Precision" 
+                  value={((trainingResults.precision || 0) * 100).toFixed(2)} 
+                />
+                <ResultCard 
+                  label="Recall" 
+                  value={((trainingResults.recall || 0) * 100).toFixed(2)} 
+                />
+                <ResultCard 
+                  label="F1 Score" 
+                  value={((trainingResults.f1_score || 0) * 100).toFixed(2)} 
+                />
               </div>
             </div>
+
+            {saveResultsMutation.error && (
+              <div className="flex gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
+                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>{saveResultsMutation.error.message || "Failed to save results"}</span>
+              </div>
+            )}
 
             <div className="flex gap-3 justify-end pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
-                className="border-border text-foreground hover:bg-muted bg-transparent"
+                disabled={saveResultsMutation.isPending}
+                className="border-border text-foreground hover:bg-muted"
               >
-                Cancel
+                Hủy
               </Button>
               <Button
                 onClick={handleSave}
+                disabled={saveResultsMutation.isPending}
                 className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
               >
-                Save Results
+                {saveResultsMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {saveResultsMutation.isPending ? "Đang lưu..." : "Lưu kết quả"}
               </Button>
             </div>
           </div>

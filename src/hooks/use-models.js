@@ -94,19 +94,18 @@ export function useRetrainModel() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ modelId, baseModel, trainingData }) => {
+    mutationFn: async (payload) => {
+      console.log("Retrain payload:", payload)
+      
       const response = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + `/models/${modelId}/retrain`,
+        process.env.NEXT_PUBLIC_API_URL + '/model/train',
         {
           method: "POST",
           credentials: 'include',
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            baseModel,
-            trainingData,
-          }),
+          body: JSON.stringify(payload),
         }
       )
 
@@ -117,10 +116,7 @@ export function useRetrainModel() {
 
       return response.json()
     },
-    onSuccess: () => {
-      // Invalidate và refetch danh sách models sau khi retrain thành công
-      queryClient.invalidateQueries({ queryKey: ['models'] })
-    },
+    onSuccess: () => {},
   })
 }
 

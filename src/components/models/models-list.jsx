@@ -125,7 +125,7 @@ export function ModelsList({ onRetrain, onRefresh, baseModels, setBaseModels }) 
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onRetrain(model.id)} className="gap-2 text-sm">
+                  <DropdownMenuItem onClick={() => onRetrain(model)} className="gap-2 text-sm">
                     <RotateCcw className="h-4 w-4" />
                     Huấn luyện lại
                   </DropdownMenuItem>
