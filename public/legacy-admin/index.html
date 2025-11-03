@@ -42,65 +42,60 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
-        // --- API Helper ---
         const api = {
             login: (username, password) => fetch('/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username, password}) }),
             logout: () => fetch('/auth/logout', { method: 'POST' }),
             me: () => fetch('/auth/me'),
             
-            // Dataset APIs
             getDatasets: () => fetch('/api/datasets'),
             createDataset: (data) => fetch('/api/datasets', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }),
             updateDataset: (id, data) => fetch(`/api/datasets/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }),
             deleteDataset: (id) => fetch(`/api/datasets/${id}`, { method: 'DELETE' }),
             
-            // Sample APIs
             getSamples: (datasetId) => fetch(`/api/datasets/${datasetId}/samples`),
             createSample: (data) => fetch('/api/samples', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }),
             updateSample: (id, data) => fetch(`/api/samples/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }),
             deleteSample: (id) => fetch(`/api/samples/${id}`, { method: 'DELETE' }),
             
-            // Crawler API
             crawlVnExpress: (url) => fetch('/api/crawler/vnexpress', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url}) }),
         };
 
-        // --- Components ---
-        function LoginPage({ onLoginSuccess }) {
-            const [username, setUsername] = useState('admin');
-            const [password, setPassword] = useState('admin');
-            const [error, setError] = useState('');
+        // function LoginPage({ onLoginSuccess }) {
+        //     const [username, setUsername] = useState('admin');
+        //     const [password, setPassword] = useState('admin');
+        //     const [error, setError] = useState('');
 
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                try {
-                    const res = await api.login(username, password);
-                    if (!res.ok) throw new Error((await res.json()).detail || 'Đăng nhập thất bại');
-                    onLoginSuccess(await res.json());
-                } catch (err) {
-                    setError(err.message);
-                }
-            };
+        //     const handleSubmit = async (e) => {
+        //         e.preventDefault();
+        //         try {
+        //             const res = await api.login(username, password);
+        //             if (!res.ok) throw new Error((await res.json()).detail || 'Đăng nhập thất bại');
+        //             onLoginSuccess(await res.json());
+        //         } catch (err) {
+        //             setError(err.message);
+        //         }
+        //     };
 
-            return (
-                <div style={{maxWidth: 400, margin: '50px auto'}}>
-                    <div className="form-container">
-                        <h2>Đăng nhập</h2>
-                        <form onSubmit={handleSubmit}>
-                            <div className="form-group">
-                                <label>Username</label>
-                                <input value={username} onChange={e => setUsername(e.target.value)} />
-                            </div>
-                            <div className="form-group">
-                                <label>Password</label>
-                                <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
-                            </div>
-                            {error && <p style={{color: 'red'}}>{error}</p>}
-                            <button type="submit" className="btn-primary">Đăng nhập</button>
-                        </form>
-                    </div>
-                </div>
-            );
-        }
+        //     return (
+        //         <div style={{maxWidth: 400, margin: '50px auto'}}>
+        //             <div className="form-container">
+        //                 <h2>Đăng nhập</h2>
+        //                 <form onSubmit={handleSubmit}>
+        //                     <div className="form-group">
+        //                         <label>Username</label>
+        //                         <input value={username} onChange={e => setUsername(e.target.value)} />
+        //                     </div>
+        //                     <div className="form-group">
+        //                         <label>Password</label>
+        //                         <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
+        //                     </div>
+        //                     {error && <p style={{color: 'red'}}>{error}</p>}
+        //                     <button type="submit" className="btn-primary">Đăng nhập</button>
+        //                 </form>
+        //             </div>
+        //         </div>
+        //     );
+        // }
 
         function AdminHome({ user, onNavigate }) {
             return (
@@ -177,7 +172,7 @@
 
             const handleSave = async (data) => {
                 if (editingDataset) {
-                    await api.updateDataset(editingDataset.dataset_ID, data);
+                    await api.updateDataset(editingDataset.id, data);
                 } else {
                     await api.createDataset(data);
                 }
@@ -204,7 +199,7 @@
 
             const handleSelectAll = (e) => {
                 if (e.target.checked) {
-                    setSelected(new Set(datasets.map(d => d.dataset_ID)));
+                    setSelected(new Set(datasets.map(d => d.id || d.dataset_ID)));
                 } else {
                     setSelected(new Set());
                 }
@@ -240,8 +235,8 @@
                         </thead>
                         <tbody>
                             {datasets.map(d => (
-                                <tr key={d.dataset_ID}>
-                                    <td><input type="checkbox" checked={selected.has(d.dataset_ID)} onChange={() => handleSelect(d.dataset_ID)} /></td>
+                                <tr key={d.id || d.dataset_ID}>
+                                    <td><input type="checkbox" checked={selected.has(d.id || d.dataset_ID)} onChange={() => handleSelect(d.id || d.dataset_ID)} /></td>
                                     <td><button className="btn-link" onClick={() => onSelectDataset(d)}>{d.name}</button></td>
                                     <td>{d.description}</td>
                                     <td>{d.status}</td>
@@ -254,7 +249,7 @@
                                     </td>
                                     <td>
                                         <button onClick={() => setEditingDataset(d)} className="btn-secondary">Sửa</button>
-                                        <button onClick={() => handleDelete(d.dataset_ID)} className="btn-danger">Xóa</button>
+                                        <button onClick={() => handleDelete(d.id || d.dataset_ID)} className="btn-danger">Xóa</button>
                                     </td>
                                 </tr>
                             ))}
@@ -274,6 +269,7 @@
             const [currentPage, setCurrentPage] = useState(1);
             const [totalSamples, setTotalSamples] = useState(0);
             const [crawledSample, setCrawledSample] = useState(null);
+            const [initialSampleData, setInitialSampleData] = useState(null);
             const itemsPerPage = 20;
             
             const fetchData = useCallback(async () => {
@@ -370,9 +366,22 @@
 
             const handleCreateSample = async (data) => {
                 try {
-                    await api.createSample({ ...data, Datasetdataset_ID: dataset.dataset_ID });
+                    const datasetId = dataset.id || dataset.dataset_ID;
+                    if (!datasetId) {
+                        throw new Error("Không thể xác định Dataset ID.");
+                    }
+                    
+                    const res = await api.createSample({ ...data, dataset_id: datasetId });
+                    
+                    if (!res.ok) {
+                        const errorBody = await res.json();
+                        const errorMessage = JSON.stringify(errorBody.detail || errorBody);
+                        throw new Error(`Server báo lỗi: ${errorMessage}`);
+                    }
+
                     setIsCreating(false);
                     setCrawledSample(null);
+                    setInitialSampleData(null);
                     fetchData();
                 } catch (error) {
                     alert('Lỗi khi tạo sample: ' + error.message);
@@ -396,6 +405,11 @@
                 } catch (error) {
                     alert('Lỗi khi crawl: ' + error.message);
                 }
+            };
+
+            const handleInitiateSaveCrawled = (crawledData) => {
+                setInitialSampleData(crawledData);
+                setIsCreating(true);
             };
 
             const renderCell = (sample, field) => {
@@ -450,7 +464,7 @@
                     </div>
 
                     <div className="actions-bar">
-                        <button onClick={() => setIsCreating(true)} className="btn-primary">Thêm Sample mới (thủ công)</button>
+                        <button onClick={() => { setInitialSampleData(null); setIsCreating(true); }} className="btn-primary">Thêm Sample mới (thủ công)</button>
                         <button onClick={handleDeleteSelected} className="btn-danger" disabled={selected.size === 0}>
                             Xóa đã chọn ({selected.size})
                         </button>
@@ -459,8 +473,9 @@
 
                     {isCreating && (
                         <SampleForm
+                            initialData={initialSampleData}
                             onSave={handleCreateSample}
-                            onCancel={() => setIsCreating(false)}
+                            onCancel={() => { setIsCreating(false); setInitialSampleData(null); }}
                         />
                     )}
 
@@ -495,7 +510,7 @@
                                         </td>
                                         <td>
                                             {s.isCrawled ? (
-                                                <button onClick={() => handleCreateSample(s)} className="btn-primary">Lưu</button>
+                                                <button onClick={() => handleInitiateSaveCrawled(s)} className="btn-primary">Hoàn tất & Lưu</button>
                                             ) : sampleId ? (
                                                 sampleId.substring(0, 8) + '...'
                                             ) : 'N/A'}
@@ -544,14 +559,14 @@
             );
         }
 
-        function SampleForm({ onSave, onCancel }) {
+        function SampleForm({ initialData, onSave, onCancel }) {
             const [formData, setFormData] = useState({
-                title: '',
-                input_text: '',
-                target_summary: '',
-                category: '',
-                source: '',
-                language: 'vi'
+                title: initialData?.title || '',
+                input_text: initialData?.input_text || '',
+                target_summary: initialData?.target_summary || '',
+                category: initialData?.category || '',
+                source: initialData?.source || '',
+                language: initialData?.language || 'vi'
             });
 
             const handleChange = (e) => {
@@ -600,7 +615,7 @@
         }
 
         function MainPage({ user, onLogout }) {
-            const [currentView, setCurrentView] = useState('home');
+            const [currentView, setCurrentView] = useState('datasets');
             const [selectedDataset, setSelectedDataset] = useState(null);
 
             const handleNavigate = (view) => {
